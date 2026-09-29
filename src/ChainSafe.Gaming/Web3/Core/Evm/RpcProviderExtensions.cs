@@ -17,6 +17,9 @@ namespace ChainSafe.Gaming.Evm.Providers
 {
     public static class RpcProviderExtensions
     {
+        private const int InitialReceiptPollDelayMs = 1000;
+        private const int MaxReceiptPollDelayMs = 16000;
+
         public static async Task<string> GetChainId(this IRpcProvider provider)
         {
             var rawHexChainId = await provider.Perform<string>("eth_chainId");
@@ -441,11 +444,12 @@ namespace ChainSafe.Gaming.Evm.Providers
             }
 
             var noTimeout = timeout == 0;
+            var delayMs = InitialReceiptPollDelayMs;
 
             while (true)
             {
-                // TODO: implement exponential backoff?
-                await Task.Delay(1000);
+                await Task.Delay(delayMs);
+                delayMs = Math.Min(delayMs * 2, MaxReceiptPollDelayMs);
 
                 receipt = await provider.GetTransactionReceipt(transactionHash);
                 if (receipt != null && receipt.Confirmations >= confirmations)
